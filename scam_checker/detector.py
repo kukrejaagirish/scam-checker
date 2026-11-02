@@ -10,6 +10,7 @@ is safe.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from typing import List, Pattern, Tuple
 
@@ -52,7 +53,11 @@ class Result:
 # ---------------------------------------------------------------------------
 # Pattern data. Each regex is matched case-insensitively against the message.
 # Hinglish words (Hindi written in Roman script) are included because most
-# real scam messages in India mix English and Hindi.
+# real scam messages in India mix English and Hindi. Hindi in Devanagari
+# script is covered too; Devanagari patterns are written without the nukta
+# (e.g. "करोडपति", not "करोड़पति") because messages are normalised first, see
+# ``normalize``. They also skip ``\b``, which does not work reliably on
+# Devanagari vowel signs.
 # ---------------------------------------------------------------------------
 CATEGORIES: Tuple[Category, ...] = (
     Category(
@@ -70,6 +75,16 @@ CATEGORIES: Tuple[Category, ...] = (
             r"\b(police|officer)\b.*\bvideo\s+call\b",
             r"\bdon'?t\s+(tell|inform)\s+(anyone|your family)\b",
             r"\bkisi\s+ko\s+mat\s+bata(na|o)?\b",
+            # Hindi (Devanagari)
+            r"डिजिटल\s*अरेस्ट",
+            r"गिरफ्तार",
+            r"(सीबीआई|सी\.बी\.आई|क्राइम\s*ब्रांच|साइबर\s*(क्राइम|सेल)|नारकोटिक्स|प्रवर्तन\s*निदेशालय)",
+            r"(अरेस्ट|गिरफ्तारी)\s*वारंट",
+            r"मनी\s*लॉ?न्ड्रिंग",
+            r"(एफआईआर|मुकदमा|केस)\s*(दर्ज|रजिस्टर)",
+            r"(पुलिस|अधिकारी|ऑफिसर).{0,40}वीडियो\s*कॉल",
+            r"वीडियो\s*कॉल.{0,40}(पुलिस|अधिकारी|ऑफिसर|पूछताछ|जांच)",
+            r"किसी\s*को\s*(भी\s*)?(मत|न|ना)\s*बता",
         ),
         reason="Mentions police/CBI/arrest. Real agencies never arrest anyone over a call or video call and never ask for money to 'settle' a case.",
     ),
@@ -88,6 +103,13 @@ CATEGORIES: Tuple[Category, ...] = (
             r"\bgalti\s+se\b.*\b(bhej|transfer|send)",
             r"\b(sent|transferred)\s+(by\s+)?mistake\b",
             r"\bpaise\s+wapas\b",
+            # Hindi (Devanagari)
+            r"(यूपीआई|यू\.पी\.आई|UPI)\s*पिन",
+            r"पिन\s*(डालें|डालो|डालिए|दर्ज)",
+            r"गलती\s*से.{0,40}(भेज|ट्रांसफर|आ\s*गए|आ\s*गया)",
+            r"पैसे\s*वापस",
+            r"(रिफंड|कैशबैक).{0,40}(लिंक|क्लिक|पिन|स्कैन|अप्रूव)",
+            r"(क्यूआर|QR)\s*(कोड)?\s*स्कैन",
         ),
         reason="Asks you to approve a UPI request, scan a QR or enter your PIN to 'receive' money. You never need a PIN to receive money.",
     ),
@@ -105,6 +127,11 @@ CATEGORIES: Tuple[Category, ...] = (
             r"\bpan\s+card\b.*\b(update|link|expire)",
             r"\belectricity\b.*\b(disconnect|cut|kat)\w*",
             r"\bbijli\b.*\b(kat|band|cut)\w*",
+            # Hindi (Devanagari)
+            r"(केवाईसी|के\.वाई\.सी)",
+            r"(खाता|खाते|अकाउंट|एकाउंट|कार्ड|सिम).{0,40}(बंद|ब्लॉक|निलंबित|फ्रीज)",
+            r"(पैन|आधार)\s*(कार्ड)?.{0,30}(अपडेट|लिंक)",
+            r"बिजली.{0,60}(कट|काट|बंद)",
         ),
         reason="Says your bank account, card, SIM or electricity will be blocked unless you update KYC. Banks do not ask for KYC through SMS links or calls.",
     ),
@@ -118,6 +145,10 @@ CATEGORIES: Tuple[Category, ...] = (
             r"\bcustoms\s+(duty|clearance|charge|fee)\b",
             r"\b(update|confirm|incomplete)\s+(your\s+)?(delivery\s+)?address\b",
             r"\bredeliver",
+            # Hindi (Devanagari)
+            r"(पार्सल|कूरियर|कुरियर|पैकेज|सामान).{0,60}(रुका|रोका|रोक\s*लिया|जब्त|कस्टम|ड्रग्स|अवैध|गैरकानूनी)",
+            r"कस्टम\s*(ड्यूटी|शुल्क|चार्ज)",
+            r"((पता|एड्रेस)\s*अपडेट|अधूरा\s*(पता|एड्रेस))",
         ),
         reason="Claims a parcel is held, seized or needs a fee/address update. Couriers don't ask for payment through random links.",
     ),
@@ -136,6 +167,13 @@ CATEGORIES: Tuple[Category, ...] = (
             r"\bprepaid\s+task\b",
             r"\bghar\s+baithe\b",
             r"\btelegram\b.{0,40}\b(task|job|join|earn)\b",
+            # Hindi (Devanagari)
+            r"घर\s*बैठे.{0,40}(कमा|काम|इनकम|जॉब|नौकरी|पैसे)",
+            r"पार्ट\s*टाइम",
+            r"(रोज|रोजाना|प्रतिदिन|हर\s*दिन).{0,30}(कमाएं|कमाओ|कमाई|कमाइए|इनकम)",
+            r"(कमाएं|कमाओ|कमाइए|कमाई).{0,40}(₹|रु|रुपये|\d{3,})",
+            r"(वीडियो|चैनल|होटल|प्रोडक्ट).{0,30}(लाइक|सब्सक्राइब|रिव्यू|रेटिंग).{0,40}(कमाएं|कमाई|पैसे|₹|रु)",
+            r"टेलीग्राम.{0,40}(टास्क|जॉब|नौकरी|जुड़|जुड|कमा)",
         ),
         reason="Offers easy money for simple tasks or part-time work. These usually end with you 'investing' money you never get back.",
     ),
@@ -151,6 +189,11 @@ CATEGORIES: Tuple[Category, ...] = (
             r"\b(processing|registration|tax)\s+fee\b",
             r"\b(inaam|inam)\b.{0,40}\b(jeet|mila|milega)\w*",
             r"\b(aapne|apne|tumne)\b.{0,30}\bjeet(a|e|i)\b",
+            # Hindi (Devanagari)
+            r"(लॉटरी|लकी\s*ड्रॉ|जैकपॉट|कौन\s*बनेगा\s*करोडपति|केबीसी)",
+            r"(इनाम|ईनाम|पुरस्कार).{0,40}(जीत|मिला|मिलेगा)",
+            r"(आपने|तुमने).{0,30}जीत(ा|े|ी)",
+            r"(प्रोसेसिंग|रजिस्ट्रेशन|पंजीकरण)\s*(फीस|शुल्क)",
         ),
         reason="Says you won a lottery, prize or lucky draw. You cannot win a contest you never entered, and real prizes never ask for a fee.",
     ),
@@ -162,6 +205,10 @@ CATEGORIES: Tuple[Category, ...] = (
             r"\b(share|send|tell|forward|give|bata|batao|bhejo|bhej\s+do)\b.{0,30}\b(otp|one\s+time\s+password|verification\s+code|cvv|pin)\b",
             r"\b(otp|cvv|pin|verification\s+code)\b.{0,30}\b(share|send|tell|forward|bata|batao|bhejo|bhej\s+do)\b",
             r"\botp\b.{0,40}\b(received|aaya|aya)\b",
+            # Hindi (Devanagari)
+            r"(बताएं|बताइए|बताओ|बता\s*दो|भेजें|भेजो|भेज\s*दो|शेयर).{0,30}(ओटीपी|OTP|सीवीवी|CVV|(यूपीआई|एटीएम|UPI|ATM)\s*पिन)",
+            r"(ओटीपी|OTP|सीवीवी|CVV|(यूपीआई|एटीएम|UPI|ATM)\s*पिन).{0,30}(बताएं|बताइए|बताओ|बता\s*दो|भेजें|भेजो|भेज\s*दो|शेयर)",
+            r"(ओटीपी|OTP).{0,40}(आया|आएगा)",
         ),
         reason="Asks you to share an OTP, PIN or CVV. No bank, company or government office ever needs your OTP.",
     ),
@@ -185,6 +232,9 @@ CATEGORIES: Tuple[Category, ...] = (
         patterns=(
             r"\b(anydesk|teamviewer|quick\s*support|rustdesk|airdroid)\b",
             r"\bscreen\s*shar(e|ing)\b",
+            # Hindi (Devanagari)
+            r"(एनीडेस्क|टीमव्यूअर|क्विक\s*सपोर्ट)",
+            r"स्क्रीन\s*शेयर",
         ),
         reason="Asks you to install a screen-sharing / remote-access app. With it, a scammer can see your OTPs and control your phone.",
     ),
@@ -198,6 +248,10 @@ CATEGORIES: Tuple[Category, ...] = (
             r"\bjaldi\b",
             r"\babhi\s+ke\s+abhi\b",
             r"\bwarna\b",
+            # Hindi (Devanagari)
+            r"(तुरंत|तुरन्त|फौरन)",
+            r"(अभी\s*के\s*अभी|आज\s*ही|वरना|अंतिम\s*चेतावनी)",
+            r"\d+\s*(घंटे|मिनट)\s*(के\s*अंदर|में)",
         ),
         reason="Pushes you to act immediately. Scammers rush you so you don't stop and check.",
     ),
@@ -233,10 +287,27 @@ def _level(score: int) -> str:
 
 _COMPILED = [(c, c.compiled()) for c in CATEGORIES]
 
+# Characters removed before matching: the Devanagari nukta (U+093C, the dot in
+# letters like "ड़" and "फ़", which people type inconsistently) and invisible
+# zero-width joiners / non-joiners / spaces that some keyboards insert.
+_STRIP = dict.fromkeys(map(ord, "\u093c\u200b\u200c\u200d\ufeff"))
+
+
+def normalize(message: str) -> str:
+    """Return the text the patterns are matched against.
+
+    Unicode is put in NFC form, the nukta and zero-width characters are
+    removed and all whitespace is collapsed to single spaces. This makes
+    "गिरफ़्तार" and "गिरफ्तार" (or the same word typed with a different
+    keyboard) look the same to the patterns.
+    """
+    text = unicodedata.normalize("NFC", message or "").translate(_STRIP)
+    return " ".join(text.split())
+
 
 def analyze(message: str) -> Result:
     """Analyse a message and return its risk score, level, matches and advice."""
-    text = " ".join((message or "").split())
+    text = normalize(message)
     matches: List[Match] = []
     for category, patterns in _COMPILED:
         evidence: List[str] = []

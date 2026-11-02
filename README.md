@@ -163,7 +163,7 @@ python -m pytest
 ```
 
 The tests also run automatically on GitHub Actions for every push and pull request
-(Python 3.9, 3.11 and 3.13).
+(Python 3.10, 3.12 and 3.13).
 
 ## Disclaimer
 

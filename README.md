@@ -23,13 +23,15 @@ exactly what to do next.
   - Fake parcel, courier or customs
   - Job, task and part-time earning scams
   - Lottery, prize and lucky draw
+  - Fake investment / trading tips / crypto ("guaranteed 5% daily returns", "VIP stock market group",
+    "double your money", guaranteed IPO allotment)
   - Requests to share OTP, PIN or CVV
   - Suspicious links (short links, look-alike bank domains, `.apk` downloads)
   - Requests to install screen-sharing apps (AnyDesk, TeamViewer)
   - Urgency / pressure words
-- Understands common Hinglish words such as "turant", "khata band", "giraftaar", "galti se", "ghar baithe".
+- Understands common Hinglish words such as "turant", "khata band", "giraftaar", "galti se", "ghar baithe", "paisa double", "pakka munafa".
 - Understands Hindi written in Devanagari too, for every scam type above (for example "डिजिटल अरेस्ट",
-  "खाता बंद", "केवाईसी", "यूपीआई पिन", "घर बैठे कमाएं", "ओटीपी बताओ"). Messages that mix Hindi and
+  "खाता बंद", "केवाईसी", "यूपीआई पिन", "घर बैठे कमाएं", "ओटीपी बताओ", "पैसा डबल", "गारंटी मुनाफा"). Messages that mix Hindi and
   English are handled as well. Spelling variants with or without the nukta ("गिरफ़्तार" / "गिरफ्तार")
   and invisible zero-width characters that some keyboards add are treated the same.
 - Gives a risk level (Low / Medium / High), a score out of 100, the reasons, and what to do.
@@ -129,6 +131,24 @@ Why:
     matched: 'तुरंत'
 ```
 
+**Example input** (a made-up investment scam message, for illustration only):
+
+```text
+Join our VIP stock market tips WhatsApp group, guaranteed 5% daily returns. Download the trading app: https://xyz-trade.top/app.apk
+```
+
+**Example output** (the "What to do" list is the same as above and is shortened here):
+
+```text
+Risk: High (score 65/100)
+
+Why:
+  - Fake investment / trading tips / crypto: Promises guaranteed or very high returns, 'double money', or VIP stock / IPO / crypto tips, often through a WhatsApp or Telegram group and a trading app link. No real investment guarantees profit; check any advisor or app on sebi.gov.in before paying anything.
+    matched: '5% daily returns', 'stock market tips WhatsApp group, guaranteed'
+  - Suspicious link: Contains a shortened, look-alike or app-download (.apk) link. Don't open it.
+    matched: 'https://xyz-trade.top', '.apk'
+```
+
 **Example input** (a normal message):
 
 ```text
@@ -177,7 +197,8 @@ bank or company number, or call 1930.
 - [x] Hindi (Devanagari) support
 - [ ] More regional languages (Marathi, Tamil, Bengali, ...)
 - [ ] Simple web page where you can paste a message
-- [ ] More scam categories (fake investment / trading apps, electricity bill, sextortion, loan apps, fake customer care)
+- [x] Fake investment / trading tips / crypto scams
+- [ ] More scam categories (sextortion, loan apps, fake customer care)
 - [ ] Better link checks (look-alike domains)
 - [x] GitHub Actions CI
 

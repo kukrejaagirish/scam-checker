@@ -3,4 +3,4 @@
 from .detector import Category, Match, Result, analyze, normalize
 
 __all__ = ["Category", "Match", "Result", "analyze", "normalize"]
-__version__ = "0.2.0"
+__version__ = "0.3.0"
